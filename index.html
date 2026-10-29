@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PRATHAMESH KARMAKAR — Active Theory Engine</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Plus+Jakarta+Sans:wght@700;800;900&display=swap" rel="stylesheet">
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        background-color: #020403;
+        color: #f1f5f3;
+        font-family: 'JetBrains Mono', monospace;
+        overflow: hidden;
+        user-select: none;
+        width: 100vw;
+        height: 100vh;
+      }
+      #webgl-canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 1;
+        cursor: grab;
+      }
+      #webgl-canvas:active {
+        cursor: grabbing;
+      }
+      .ui-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 32px 4vw;
+      }
+      .interactive {
+        pointer-events: auto;
+      }
+      /* Active Theory Top Right Nav Pill */
+      .at-pill-nav {
+        display: inline-flex;
+        align-items: center;
+        gap: 16px;
+        background: rgba(10, 18, 14, 0.7);
+        border: 1px solid rgba(0, 255, 102, 0.25);
+        padding: 8px 24px;
+        border-radius: 9999px;
+        backdrop-filter: blur(16px);
+        font-size: 11px;
+        letter-spacing: 0.15em;
+      }
+      .at-pill-nav a {
+        color: #ffffff;
+        text-decoration: none;
+        transition: color 0.2s ease;
+      }
+      .at-pill-nav a:hover, .at-pill-nav a.active {
+        color: #00FF66;
+      }
+      /* Sound Wave Indicator */
+      .sound-wave {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        height: 14px;
+      }
+      .sound-bar {
+        width: 2px;
+        background: #00FF66;
+        border-radius: 1px;
+        animation: waveAnim 1s ease-in-out infinite alternate;
+      }
+      .sound-bar:nth-child(2) { animation-delay: 0.2s; }
+      .sound-bar:nth-child(3) { animation-delay: 0.4s; }
+      .sound-bar:nth-child(4) { animation-delay: 0.1s; }
+      @keyframes waveAnim {
+        0% { height: 4px; }
+        100% { height: 14px; }
+      }
+      /* Active Theory Left Sidebar */
+      .at-sidebar {
+        max-width: 320px;
+        font-size: 11px;
+        line-height: 1.9;
+        margin-top: auto;
+        margin-bottom: auto;
+      }
+      .at-sidebar-title {
+        color: #64748b;
+        font-size: 10px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        margin-bottom: 14px;
+      }
+      .at-menu-item {
+        display: block;
+        color: #94a3b8;
+        text-decoration: none;
+        letter-spacing: 0.08em;
+        transition: all 0.2s;
+        cursor: pointer;
+      }
+      .at-menu-item:hover, .at-menu-item.active {
+        color: #00FF66;
+        transform: translateX(6px);
+      }
+      .ask-pill {
+        margin-top: 20px;
+        display: inline-block;
+        background: rgba(15, 23, 19, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        padding: 8px 20px;
+        border-radius: 9999px;
+        color: #64748b;
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-decoration: none;
+        transition: border-color 0.2s, color 0.2s;
+      }
+      .ask-pill:hover {
+        border-color: #00FF66;
+        color: #00FF66;
+      }
+      /* Active Theory View Controls (Top Right Under Nav) */
+      .at-view-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 12px;
+        align-self: flex-end;
+      }
+      .ctrl-btn {
+        background: rgba(10, 18, 14, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 9px;
+        color: #64748b;
+        cursor: pointer;
+        letter-spacing: 0.1em;
+        transition: all 0.2s;
+      }
+      .ctrl-btn:hover {
+        border-color: #00FF66;
+        color: #00FF66;
+      }
+      .drag-hint {
+        position: fixed;
+        bottom: 28px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 10px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.35);
+        background: rgba(0, 0, 0, 0.6);
+        padding: 6px 16px;
+        border-radius: 9999px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Real-Time WebGL Spatial Canvas -->
+    <canvas id="webgl-canvas"></canvas>
+
+    <div class="ui-overlay">
+      <!-- Top Bar -->
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%;">
+        <div>
+          <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 18px; font-weight: 800; letter-spacing: -0.02em; color: #fff;">
+            PRATHAMESH KARMAKAR
+          </div>
+          <div style="font-size: 10px; color: #64748b; letter-spacing: 0.15em; margin-top: 4px;">
+            DATABASE ARCHITECT // PRODUCTION DATA ANALYST
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; align-items: flex-end;">
+          <div class="at-pill-nav interactive">
+            <a href="#" class="active">WORK</a>
+            <div class="sound-wave">
+              <div class="sound-bar"></div>
+              <div class="sound-bar"></div>
+              <div class="sound-bar"></div>
+              <div class="sound-bar"></div>
+            </div>
+            <a href="mailto:karmakarprathamesh530@gmail.com">CONTACT</a>
+          </div>
+
+          <div class="at-view-controls interactive">
+            <button class="ctrl-btn" id="btn-prev">&lt;&lt;</button>
+            <button class="ctrl-btn" id="btn-mode">3D ORBIT</button>
+            <button class="ctrl-btn" id="btn-next">&gt;&gt;</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Left Active Theory Navigation Menu -->
+      <div class="at-sidebar interactive">
+        <div class="at-sidebar-title">WHAT ARE YOU LOOKING FOR?</div>
+        <a class="at-menu-item active" id="menu-item-0">-&gt; HOTELKEY SAAS PLATFORM</a>
+        <a class="at-menu-item" id="menu-item-1">-&gt; 70K+ ZERO-LOSS MIGRATION</a>
+        <a class="at-menu-item" id="menu-item-2">-&gt; TRANSACTIONAL ETL ENGINE</a>
+        <a class="at-menu-item" id="menu-item-3">-&gt; HOSPITAL 3NF ARCHITECTURE</a>
+        <a class="at-menu-item" id="menu-item-4">-&gt; QUERY &amp; CPU OPTIMIZATION</a>
+        <a href="mailto:karmakarprathamesh530@gmail.com" class="ask-pill interactive">
+          ASK ME ANYTHING . . .
+        </a>
+      </div>
+
+      <!-- Bottom Bar -->
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #475569; letter-spacing: 0.15em;">
+        <div>© 2026 NAGPUR, MH, INDIA</div>
+        <div style="color: #00FF66;">REAL-TIME SPATIAL CAROUSEL ACTIVE</div>
+      </div>
+    </div>
+
+    <div class="drag-hint">DRAG CAROUSEL / SCROLL TO TRAVEL THROUGH WORK</div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
